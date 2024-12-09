@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 )
 
 func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
@@ -17,6 +18,7 @@ func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
 		Text      string `json:"text"`
 	}
 
+	// リクエストボディをJSONにデコード
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		switch err {
 		case io.EOF:
@@ -56,46 +58,48 @@ func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func postToDiscordWebhook(team string) error {
+	// DiscordのWebhookにPOSTするデータの構造体
 	type embeds struct {
 		Title       string `json:"title"`
 		Url         string `json:"url"`
 		Description string `json:"description"`
 		Color       int    `json:"color"`
 	}
-
 	type postData struct {
 		Content string `json:"content"`
 		Embeds  embeds `json:"embeds"`
 	}
-
 	var data = postData{}
 	data.Content = "Notionに新しい投稿があります！"
 	data.Embeds = embeds{}
 	data.Embeds.Title = "page.title"
 	data.Embeds.Color = 5620992
-	// 環境変数からDiscordのWebhook URLを取得
 
+	// 環境変数からDiscordのWebhook URLを取得
 	var webhookUrl string
 	switch team {
 	case "teamA":
-		webhookUrl = "Team A Webhook URL"
+		webhookUrl = os.Getenv("A")
 	case "teamB":
-		webhookUrl = "Team B Webhook URL"
+		webhookUrl = os.Getenv("B")
 	case "teamC":
-		webhookUrl = "Team C Webhook URL"
+		webhookUrl = os.Getenv("C")
 	case "teamD":
-		webhookUrl = "Team D Webhook URL"
+		webhookUrl = os.Getenv("D")
 	case "teamE":
-		webhookUrl = "Team E Webhook URL"
+		webhookUrl = os.Getenv("E")
 	default:
+		webhookUrl = ""
 		return fmt.Errorf("invalid team: %s", team)
 	}
 
+	// PostするデータをJSONに変換
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
 
+	// POSTリクエストを作成
 	req, err := http.NewRequest("POST", webhookUrl, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return err
