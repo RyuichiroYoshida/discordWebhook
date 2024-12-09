@@ -18,8 +18,11 @@ func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
 		Text      string `json:"text"`
 	}
 
+	// JSONデータをひとまず全て受け取る
+	var allData map[string]interface{}
+
 	// リクエストボディをJSONにデコード
-	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&allData); err != nil {
 		switch err {
 		case io.EOF:
 			fmt.Fprint(w, "Hello World!")
@@ -30,6 +33,8 @@ func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	log.Printf("allData: %v", allData)
 
 	// 必須パラメータのチェック
 	if data.Team == "" {
