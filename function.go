@@ -43,20 +43,8 @@ func postToDiscordWebhook(notionData *NotionData) error {
 	data.Embeds.Color = 5620992
 
 	// 環境変数からDiscordのWebhook URLを取得
-	var webhookUrl string
-	switch notionData.Team {
-	case "teamA":
-		webhookUrl = os.Getenv("A")
-	case "teamB":
-		webhookUrl = os.Getenv("B")
-	case "teamC":
-		webhookUrl = os.Getenv("C")
-	case "teamD":
-		webhookUrl = os.Getenv("D")
-	case "teamE":
-		webhookUrl = os.Getenv("E")
-	default:
-		webhookUrl = ""
+	webhookUrl := os.Getenv(notionData.Team)
+	if webhookUrl == "" {
 		return fmt.Errorf("invalid team: %s", notionData.Team)
 	}
 
