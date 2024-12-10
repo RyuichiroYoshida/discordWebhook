@@ -80,6 +80,7 @@ func postToDiscordWebhook(notionData *NotionData) error {
 	if err != nil {
 		return err
 	}
+
 	defer resp.Body.Close()
 
 	return err
@@ -123,7 +124,9 @@ func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&allData); err != nil {
 		switch err {
 		case io.EOF:
-			fmt.Fprint(w, "Success")
+			if _, resErr := fmt.Fprint(w, "Success!"); resErr != nil {
+				return
+			}
 			break
 		default:
 			log.Printf("json.NewDecoder: %v", err)
@@ -143,8 +146,9 @@ func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
 	if err := postToDiscordWebhook(&postData); err != nil {
 		log.Printf("postToDiscordWebhook: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
 	} else {
-		fmt.Fprint(w, "Success")
+		if _, resErr := fmt.Fprint(w, "Success!"); resErr != nil {
+			return
+		}
 	}
 }
