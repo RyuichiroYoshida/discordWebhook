@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 )
@@ -120,8 +121,7 @@ func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
 			}
 			break
 		default:
-			log.Printf("json.NewDecoder: %v", err)
-			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			slog.Warn("json.NewDecoder: %v", err)
 			break
 		}
 	}
@@ -129,14 +129,13 @@ func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
 	log.Printf("allData: %v", allData)
 
 	// 必須パラメータが揃っているかチェック
-	if errText := CheckJsonData(&postData, allData); errText != "" {
-		http.Error(w, errText, http.StatusBadRequest)
+	if errText := CheckJsonData(&postData, allData); errText == "" {
+		slog.Warn("CheckJsonData: %v", errText)
 	}
 
 	// DiscordのWebhookに通知
 	if err := postToDiscordWebhook(&postData); err != nil {
-		log.Printf("postToDiscordWebhook: %v", err)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		slog.Warn("postToDiscordWebhook: %v", err)
 	} else {
 		if _, resErr := fmt.Fprint(w, "Success!"); resErr != nil {
 			return
