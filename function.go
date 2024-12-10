@@ -10,58 +10,16 @@ import (
 	"os"
 )
 
-func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
-	// NotionのWebhookが送信するJSONの形式が分からないので、仮組み
-	var data struct {
-		Team      string `json:"team"`
-		NotionUrl string `json:"url"`
-		Text      string `json:"text"`
-	}
-
-	// JSONデータをひとまず全て受け取る
-	var allData map[string]interface{}
-
-	// リクエストボディをJSONにデコード
-	if err := json.NewDecoder(r.Body).Decode(&allData); err != nil {
-		switch err {
-		case io.EOF:
-			fmt.Fprint(w, "Hello World!")
-			return
-		default:
-			log.Printf("json.NewDecoder: %v", err)
-			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-			return
-		}
-	}
-
-	log.Printf("allData: %v", allData)
-
-	// 必須パラメータのチェック
-	if data.Team == "" {
-		http.Error(w, "missing team", http.StatusBadRequest)
-		return
-	}
-
-	if data.NotionUrl == "" {
-		http.Error(w, "missing url", http.StatusBadRequest)
-		return
-	}
-
-	if data.Text == "" {
-		http.Error(w, "missing text", http.StatusBadRequest)
-		return
-	}
-
-	// DiscordのWebhookに通知
-	if err := postToDiscordWebhook(data.Team); err != nil {
-		log.Printf("postToDiscordWebhook: %v", err)
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-		return
-	} else {
-		fmt.Fprint(w, "Success")
-	}
+// NotionのWebhookが送信するJSONデータの構造体
+var postData struct {
+	Team   string
+	Url    string
+	Title  string
+	Status string
+	User   string
 }
 
+// postToDiscordWebhook はDiscordのWebhookにPOSTする関数
 func postToDiscordWebhook(team string) error {
 	// DiscordのWebhookにPOSTするデータの構造体
 	type embeds struct {
@@ -121,4 +79,66 @@ func postToDiscordWebhook(team string) error {
 	defer resp.Body.Close()
 
 	return err
+}
+
+// CheckJsonData はNotionのWebhookが送信するJSONデータの必須パラメータが揃っているかチェックする関数
+func CheckJsonData(allData map[string]interface{}) string {
+	data := allData["data"].(map[string]interface{})
+	// 必須パラメータのチェック
+	if postData.User = data["created_by"].(map[string]interface{})["object"].(string); postData.Team == "" {
+		return "missing user"
+	}
+
+	if postData.Url = data["url"].(string); postData.Url == "" {
+		return "missing url"
+	}
+
+	if postData.Title = data["properties"].(map[string]interface{})["概要"].(map[string]interface{})["title"].(map[string]interface{})["plain_text"].(string); postData.Title == "" {
+		return "missing title"
+	}
+
+	if postData.Status = data["properties"].(map[string]interface{})["進捗"].(map[string]interface{})["name"].(string); postData.Status == "" {
+		return "missing status"
+	}
+
+	if postData.Team = data["properties"].(map[string]interface{})["Team"].(map[string]interface{})["title"].(map[string]interface{})["plain_text"].(string); postData.Team == "" {
+		return "missing team"
+	}
+
+	return ""
+}
+
+// PostNotionWebhook はNotionのWebhookを受け取る関数 (CloudFunctionsのエントリーポイント)
+func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
+
+	// JSONデータをひとまず全て受け取る
+	var allData map[string]interface{}
+
+	// リクエストボディをJSONにデコード
+	if err := json.NewDecoder(r.Body).Decode(&allData); err != nil {
+		switch err {
+		case io.EOF:
+			fmt.Fprint(w, "Success")
+			break
+		default:
+			log.Printf("json.NewDecoder: %v", err)
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+			break
+		}
+	}
+
+	log.Printf("allData: %v", allData)
+
+	if errText := CheckJsonData(allData); errText != "" {
+		http.Error(w, errText, http.StatusBadRequest)
+	}
+
+	// DiscordのWebhookに通知
+	if err := postToDiscordWebhook(postData.Team); err != nil {
+		log.Printf("postToDiscordWebhook: %v", err)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	} else {
+		fmt.Fprint(w, "Success")
+	}
 }
