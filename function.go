@@ -107,31 +107,59 @@ func postDiscord(d []byte, webhookUrl string) {
 }
 
 // checkJsonData はNotionのWebhookが送信するJSONデータの必須パラメータが揃っているかチェックする関数
-func checkJsonData(postData *NotionData, allData map[string]interface{}) string {
+func checkJsonData(postData *NotionData, allData map[string]any) string {
 	// 必須パラメータのチェック
 	data := allData["data"].(map[string]interface{})
 
-	if postData.Url = data["url"].(string); postData.Url == "" {
+	if postData.Url = getJsonValue[string](data, "url"); postData.Url == "" {
 		return "missing url"
 	}
 
-	if postData.Title = data["properties"].(map[string]interface{})["概要"].(map[string]interface{})["title"].(map[string]interface{})["plain_text"].(string); postData.Title == "" {
+	if postData.Title = getJsonValue[string](data, "properties", "概要", "title", "plain_text"); postData.Title == "" {
 		return "missing title"
 	}
 
-	if postData.Status = data["properties"].(map[string]interface{})["進捗"].(map[string]interface{})["status"].(map[string]interface{})["name"].(string); postData.Status == "" {
+	if postData.Status = getJsonValue[string](data, "properties", "進捗", "status", "name"); postData.Status == "" {
 		return "missing status"
 	}
 
-	if postData.User = data["properties"].(map[string]interface{})["報告者"].(map[string]interface{})["created_by"].(map[string]interface{})["name"].(string); postData.User == "" {
+	if postData.User = getJsonValue[string](data, "properties", "報告者", "created_by", "name"); postData.User == "" {
 		return "missing user"
 	}
 
-	if postData.Team = data["properties"].(map[string]interface{})["Team"].(map[string]interface{})["rich_text"].(map[string]interface{})["plain_text"].(string); postData.Team == "" {
+	if postData.Team = getJsonValue[string](data, "properties", "Team", "rich_text", "plain_text"); postData.Team == "" {
 		return "missing team"
 	}
 
 	return ""
+}
+
+// getJsonValue はJSONデータから指定したキーの値を取得する関数
+func getJsonValue[T any](m map[string]any, keys ...string) T {
+	var empty T
+
+	if len(keys) == 0 {
+		return empty
+	}
+
+	key := keys[0]
+	value := m[key]
+
+	if len(keys) == 1 {
+		v, ok := value.(T)
+		if !ok {
+			return empty
+		}
+		return v
+	}
+
+	nextMap, ok := value.(map[string]any)
+	if !ok {
+		return empty
+	}
+	nextKeys := keys[1:]
+
+	return getJsonValue[T](nextMap, nextKeys...)
 }
 
 // PostNotionWebhook はNotionのWebhookを受け取る関数 (CloudFunctionsのエントリーポイント)
@@ -139,7 +167,7 @@ func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
 	var postData NotionData
 
 	// JSONデータをひとまず全て受け取る
-	var allData map[string]interface{}
+	var allData map[string]any
 
 	// リクエストボディをJSONにデコード
 	if err := json.NewDecoder(r.Body).Decode(&allData); err != nil {
