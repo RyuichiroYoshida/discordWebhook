@@ -42,6 +42,8 @@ func postToDiscordWebhook(notionData *NotionData) error {
 	data.Embeds.Description = fmt.Sprintf("進捗: %s\n投稿者: %s", notionData.Status, notionData.User)
 	data.Embeds.Color = 5620992
 
+	log.Printf("postData: %v", data)
+
 	// 環境変数からDiscordのWebhook URLを取得
 	webhookUrl := os.Getenv(notionData.Team)
 	if webhookUrl == "" {
@@ -78,9 +80,6 @@ func postToDiscordWebhook(notionData *NotionData) error {
 func CheckJsonData(postData *NotionData, allData map[string]interface{}) string {
 	// 必須パラメータのチェック
 	data := allData["data"].(map[string]interface{})
-	if postData.User = data["created_by"].(map[string]interface{})["object"].(string); postData.Team == "" {
-		return "missing user"
-	}
 
 	if postData.Url = data["url"].(string); postData.Url == "" {
 		return "missing url"
@@ -90,11 +89,15 @@ func CheckJsonData(postData *NotionData, allData map[string]interface{}) string 
 		return "missing title"
 	}
 
-	if postData.Status = data["properties"].(map[string]interface{})["進捗"].(map[string]interface{})["name"].(string); postData.Status == "" {
+	if postData.Status = data["properties"].(map[string]interface{})["進捗"].(map[string]interface{})["status"].(map[string]interface{})["name"].(string); postData.Status == "" {
 		return "missing status"
 	}
 
-	if postData.Team = data["properties"].(map[string]interface{})["Team"].(map[string]interface{})["title"].(map[string]interface{})["plain_text"].(string); postData.Team == "" {
+	if postData.User = data["properties"].(map[string]interface{})["報告者"].(map[string]interface{})["created_by"].(map[string]interface{})["name"].(string); postData.User == "" {
+		return "missing user"
+	}
+
+	if postData.Team = data["properties"].(map[string]interface{})["Team"].(map[string]interface{})["rich_text"].(map[string]interface{})["plain_text"].(string); postData.Team == "" {
 		return "missing team"
 	}
 
