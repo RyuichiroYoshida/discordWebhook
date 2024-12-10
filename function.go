@@ -10,8 +10,8 @@ import (
 	"os"
 )
 
-// NotionのWebhookが送信するJSONデータの構造体
-var postData struct {
+// NotionData NotionのWebhookが送信するJSONデータの構造体
+type NotionData struct {
 	Team   string
 	Url    string
 	Title  string
@@ -20,7 +20,7 @@ var postData struct {
 }
 
 // postToDiscordWebhook はDiscordのWebhookにPOSTする関数
-func postToDiscordWebhook(team string) error {
+func postToDiscordWebhook(notionData *NotionData) error {
 	// DiscordのWebhookにPOSTするデータの構造体
 	type embeds struct {
 		Title       string `json:"title"`
@@ -32,15 +32,19 @@ func postToDiscordWebhook(team string) error {
 		Content string `json:"content"`
 		Embeds  embeds `json:"embeds"`
 	}
+
+	// DiscordのWebhookにPOSTするデータを作成
 	var data = postData{}
 	data.Content = "Notionに新しい投稿があります！"
 	data.Embeds = embeds{}
-	data.Embeds.Title = "page.title"
+	data.Embeds.Title = notionData.Title
+	data.Embeds.Url = notionData.Url
+	data.Embeds.Description = fmt.Sprintf("進捗: %s\n投稿者: %s", notionData.Status, notionData.User)
 	data.Embeds.Color = 5620992
 
 	// 環境変数からDiscordのWebhook URLを取得
 	var webhookUrl string
-	switch team {
+	switch notionData.Team {
 	case "teamA":
 		webhookUrl = os.Getenv("A")
 	case "teamB":
@@ -53,7 +57,7 @@ func postToDiscordWebhook(team string) error {
 		webhookUrl = os.Getenv("E")
 	default:
 		webhookUrl = ""
-		return fmt.Errorf("invalid team: %s", team)
+		return fmt.Errorf("invalid team: %s", notionData.Team)
 	}
 
 	// PostするデータをJSONに変換
@@ -82,9 +86,9 @@ func postToDiscordWebhook(team string) error {
 }
 
 // CheckJsonData はNotionのWebhookが送信するJSONデータの必須パラメータが揃っているかチェックする関数
-func CheckJsonData(allData map[string]interface{}) string {
-	data := allData["data"].(map[string]interface{})
+func CheckJsonData(postData *NotionData, allData map[string]interface{}) string {
 	// 必須パラメータのチェック
+	data := allData["data"].(map[string]interface{})
 	if postData.User = data["created_by"].(map[string]interface{})["object"].(string); postData.Team == "" {
 		return "missing user"
 	}
@@ -110,6 +114,7 @@ func CheckJsonData(allData map[string]interface{}) string {
 
 // PostNotionWebhook はNotionのWebhookを受け取る関数 (CloudFunctionsのエントリーポイント)
 func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
+	var postData NotionData
 
 	// JSONデータをひとまず全て受け取る
 	var allData map[string]interface{}
@@ -129,12 +134,13 @@ func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("allData: %v", allData)
 
-	if errText := CheckJsonData(allData); errText != "" {
+	// 必須パラメータが揃っているかチェック
+	if errText := CheckJsonData(&postData, allData); errText != "" {
 		http.Error(w, errText, http.StatusBadRequest)
 	}
 
 	// DiscordのWebhookに通知
-	if err := postToDiscordWebhook(postData.Team); err != nil {
+	if err := postToDiscordWebhook(&postData); err != nil {
 		log.Printf("postToDiscordWebhook: %v", err)
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
