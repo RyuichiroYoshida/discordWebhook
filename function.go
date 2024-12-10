@@ -20,8 +20,31 @@ type NotionData struct {
 	User   string
 }
 
-// postToDiscordWebhook はDiscordのWebhookにPOSTする関数
-func postToDiscordWebhook(notionData *NotionData) error {
+func postErrorDiscordWebhook(errMsg string, errText error) {
+	type data struct {
+		Content string `json:"content"`
+	}
+	var d = data{
+		Content: errText.Error(),
+	}
+
+	// 環境変数からDiscordのWebhook URLを取得
+	webhookUrl := os.Getenv("Test")
+	if webhookUrl == "" {
+		slog.Warn("invalid team: %s", "Test")
+	}
+
+	// PostするデータをJSONに変換
+	jsonData, err := json.Marshal(&d)
+	if err != nil {
+		slog.Warn("failed to create a new request: %v", err)
+	}
+
+	postDiscord(jsonData, webhookUrl)
+}
+
+// createDiscordWebhookData はDiscordのWebhookにPOSTする関数
+func createDiscordWebhookData(notionData *NotionData) error {
 	// DiscordのWebhookにPOSTするデータの構造体
 	type embeds struct {
 		Title       string `json:"title"`
@@ -57,10 +80,17 @@ func postToDiscordWebhook(notionData *NotionData) error {
 		return err
 	}
 
+	postDiscord(jsonData, webhookUrl)
+
+	return nil
+}
+
+// postDiscord はDiscordのWebhookにPOSTする関数
+func postDiscord(d []byte, webhookUrl string) {
 	// POSTリクエストを作成
-	req, err := http.NewRequest("POST", webhookUrl, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", webhookUrl, bytes.NewBuffer(d))
 	if err != nil {
-		return err
+		slog.Warn("failed to create a new request: %v", err)
 	}
 
 	// Content-Typeを設定
@@ -69,16 +99,14 @@ func postToDiscordWebhook(notionData *NotionData) error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		slog.Warn("failed to send a request: %v", err)
 	}
 
 	defer resp.Body.Close()
-
-	return err
 }
 
-// CheckJsonData はNotionのWebhookが送信するJSONデータの必須パラメータが揃っているかチェックする関数
-func CheckJsonData(postData *NotionData, allData map[string]interface{}) string {
+// checkJsonData はNotionのWebhookが送信するJSONデータの必須パラメータが揃っているかチェックする関数
+func checkJsonData(postData *NotionData, allData map[string]interface{}) string {
 	// 必須パラメータのチェック
 	data := allData["data"].(map[string]interface{})
 
@@ -129,13 +157,13 @@ func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
 	log.Printf("allData: %v", allData)
 
 	// 必須パラメータが揃っているかチェック
-	if errText := CheckJsonData(&postData, allData); errText == "" {
-		slog.Warn("CheckJsonData: %v", errText)
+	if errText := checkJsonData(&postData, allData); errText == "" {
+		slog.Warn("checkJsonData: %v", errText)
 	}
 
 	// DiscordのWebhookに通知
-	if err := postToDiscordWebhook(&postData); err != nil {
-		slog.Warn("postToDiscordWebhook: %v", err)
+	if err := createDiscordWebhookData(&postData); err != nil {
+		slog.Warn("createDiscordWebhookData: %v", err)
 	} else {
 		if _, resErr := fmt.Fprint(w, "Success!"); resErr != nil {
 			return
