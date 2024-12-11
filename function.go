@@ -108,30 +108,32 @@ func postDiscord(d []byte, webhookUrl string) {
 
 // checkJsonData はNotionのWebhookが送信するJSONデータの必須パラメータが揃っているかチェックする関数
 func checkJsonData(postData *NotionData, allData map[string]any) string {
+	errMsg := ""
+
 	// 必須パラメータのチェック
 	data := allData["data"].(map[string]interface{})
 
 	if postData.Url = getJsonValue[string](data, "url"); postData.Url == "" {
-		return "missing url"
+		errMsg += "missing url\n"
 	}
 
 	if postData.Title = getJsonValue[string](data, "properties", "概要", "title", "plain_text"); postData.Title == "" {
-		return "missing title"
+		errMsg += "missing title\n"
 	}
 
 	if postData.Status = getJsonValue[string](data, "properties", "進捗", "status", "name"); postData.Status == "" {
-		return "missing status"
+		errMsg += "missing status\n"
 	}
 
 	if postData.User = getJsonValue[string](data, "properties", "報告者", "created_by", "name"); postData.User == "" {
-		return "missing user"
+		errMsg += "missing user\n"
 	}
 
 	if postData.Team = getJsonValue[string](data, "properties", "Team", "rich_text", "plain_text"); postData.Team == "" {
-		return "missing team"
+		errMsg += "missing team\n"
 	}
 
-	return ""
+	return errMsg
 }
 
 // getJsonValue はJSONデータから指定したキーの値を取得する関数
