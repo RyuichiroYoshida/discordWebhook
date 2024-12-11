@@ -117,7 +117,7 @@ func checkJsonData(postData *NotionData, allData map[string]any) string {
 		errMsg += "missing url\n"
 	}
 
-	if postData.Title = getJsonValue[string](data, "properties", "概要", "title", "plain_text"); postData.Title == "" {
+	if postData.Title = getJsonValue[[]string](data, "properties", "概要", "title")[2]; postData.Title == "" {
 		errMsg += "missing title\n"
 	}
 
@@ -129,7 +129,7 @@ func checkJsonData(postData *NotionData, allData map[string]any) string {
 		errMsg += "missing user\n"
 	}
 
-	if postData.Team = getJsonValue[string](data, "properties", "Team", "rich_text", "plain_text"); postData.Team == "" {
+	if postData.Team = getJsonValue[[]string](data, "properties", "Team", "rich_text")[2]; postData.Team == "" {
 		errMsg += "missing team\n"
 	}
 
