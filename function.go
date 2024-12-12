@@ -107,29 +107,29 @@ func postDiscord(d []byte, webhookUrl string) {
 }
 
 // checkJsonData はNotionのWebhookが送信するJSONデータの必須パラメータが揃っているかチェックする関数
-func checkJsonData(postData *NotionData, allData map[string]any) string {
+func checkJsonData(postData *NotionData, allData *NotionJsonData) string {
 	errMsg := ""
 
 	// 必須パラメータのチェック
-	data := allData["data"].(map[string]interface{})
+	data := allData.Data
 
-	if postData.Url = getJsonValue[string](data, "url"); postData.Url == "" {
+	if postData.Url = data.URL; postData.Url == "" {
 		errMsg += "missing url\n"
 	}
 
-	if postData.Title = getJsonValue[[]string](data, "properties", "概要", "title")[2]; postData.Title == "" {
+	if postData.Title = data.Properties.Summary.Title[0].PlainText; postData.Title == "" {
 		errMsg += "missing title\n"
 	}
 
-	if postData.Status = getJsonValue[string](data, "properties", "進捗", "status", "name"); postData.Status == "" {
+	if postData.Status = data.Properties.Progress.Status.Name; postData.Status == "" {
 		errMsg += "missing status\n"
 	}
 
-	if postData.User = getJsonValue[string](data, "properties", "報告者", "created_by", "name"); postData.User == "" {
+	if postData.User = data.Properties.Reporter.CreatedBy.Name; postData.User == "" {
 		errMsg += "missing user\n"
 	}
 
-	if postData.Team = getJsonValue[[]string](data, "properties", "Team", "rich_text")[2]; postData.Team == "" {
+	if postData.Team = data.Properties.Team.RichText[0].PlainText; postData.Team == "" {
 		errMsg += "missing team\n"
 	}
 
@@ -169,7 +169,7 @@ func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
 	var postData NotionData
 
 	// JSONデータをひとまず全て受け取る
-	var allData map[string]any
+	var allData NotionJsonData
 
 	// リクエストボディをJSONにデコード
 	if err := json.NewDecoder(r.Body).Decode(&allData); err != nil {
@@ -184,11 +184,10 @@ func PostNotionWebhook(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-
 	log.Printf("allData: %v", allData)
 
 	// 必須パラメータが揃っているかチェック
-	if errLog := checkJsonData(&postData, allData); errLog != "" {
+	if errLog := checkJsonData(&postData, &allData); errLog != "" {
 		slog.Warn("checkJsonData: %v", errLog)
 		postErrMsgToDiscordWebhook("NotionのWebhookが送信するJSONデータに不備があります", fmt.Errorf(errLog))
 	}
