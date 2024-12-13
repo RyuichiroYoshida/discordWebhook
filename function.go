@@ -75,6 +75,8 @@ func createDiscordWebhookData(notionData *NotionData) error {
 		return fmt.Errorf("invalid team: %s", notionData.Team)
 	}
 
+	fmt.Printf("webhookUrl: %v", webhookUrl)
+
 	// PostするデータをJSONに変換
 	jsonData, err := json.Marshal(data)
 	if err != nil {
