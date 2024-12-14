@@ -11,13 +11,13 @@ import (
 	"os"
 )
 
-// NotionData NotionのWebhookが送信するJSONデータの構造体
+// NotionData NotionのWebhookから受け取るJSONデータの構造体
 type NotionData struct {
-	Team   string
-	Url    string
-	Title  string
-	Status string
-	User   string
+	Team   string `json:"team"`
+	Url    string `json:"url"`
+	Title  string `json:"title"`
+	Status string `json:"status"`
+	User   string `json:"user"`
 }
 
 // postErrMsgToDiscordWebhook はエラーメッセージをDiscordのWebhookにPOSTする関数
@@ -47,25 +47,25 @@ func postErrMsgToDiscordWebhook(errMsg string, errLog error) {
 // createDiscordWebhookData はDiscordのWebhookにPOSTする関数
 func createDiscordWebhookData(notionData *NotionData) error {
 	// DiscordのWebhookにPOSTするデータの構造体
-	type embeds struct {
-		Title       string `json:"title"`
-		Url         string `json:"url"`
-		Description string `json:"description"`
-		Color       int    `json:"color"`
-	}
 	type postData struct {
 		Content string `json:"content"`
-		Embeds  embeds `json:"embeds"`
+		Embeds  []struct {
+			Title       string `json:"title"`
+			Url         string `json:"url"`
+			Description string `json:"description"`
+			Color       int    `json:"color"`
+		} `json:"embeds"`
 	}
 
 	// DiscordのWebhookにPOSTするデータを作成
-	var data = postData{}
+	data := postData{}
 	data.Content = "Notionに新しい投稿があります！"
-	data.Embeds = embeds{}
-	data.Embeds.Title = notionData.Title
-	data.Embeds.Url = notionData.Url
-	data.Embeds.Description = fmt.Sprintf("進捗: %s\n投稿者: %s", notionData.Status, notionData.User)
-	data.Embeds.Color = 5620992
+
+	embed := data.Embeds[0]
+	embed.Title = notionData.Title
+	embed.Url = notionData.Url
+	embed.Description = fmt.Sprintf("進捗: %s\n投稿者: %s", notionData.Status, notionData.User)
+	embed.Color = 5620992
 
 	log.Printf("postData: %v", data)
 
