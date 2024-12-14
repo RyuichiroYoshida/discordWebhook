@@ -46,26 +46,31 @@ func postErrMsgToDiscordWebhook(errMsg string, errLog error) {
 
 // createDiscordWebhookData はDiscordのWebhookにPOSTする関数
 func createDiscordWebhookData(notionData *NotionData) error {
+	type Embed struct {
+		Title       string `json:"title"`
+		Url         string `json:"url"`
+		Description string `json:"description"`
+		Color       int    `json:"color"`
+	}
+
 	// DiscordのWebhookにPOSTするデータの構造体
 	type postData struct {
-		Content string `json:"content"`
-		Embeds  []struct {
-			Title       string `json:"title"`
-			Url         string `json:"url"`
-			Description string `json:"description"`
-			Color       int    `json:"color"`
-		} `json:"embeds"`
+		Content string  `json:"content"`
+		Embeds  []Embed `json:"embeds"`
 	}
 
 	// DiscordのWebhookにPOSTするデータを作成
-	data := postData{}
-	data.Content = "Notionに新しい投稿があります！"
-
-	embed := data.Embeds[0]
-	embed.Title = notionData.Title
-	embed.Url = notionData.Url
-	embed.Description = fmt.Sprintf("進捗: %s\n投稿者: %s", notionData.Status, notionData.User)
-	embed.Color = 5620992
+	data := postData{
+		Content: "Notionに新しい投稿があります！",
+		Embeds: []Embed{
+			{
+				Title:       notionData.Title,
+				Url:         notionData.Url,
+				Description: fmt.Sprintf("進捗: %s\n投稿者: %s", notionData.Status, notionData.User),
+				Color:       5620992,
+			},
+		},
+	}
 
 	log.Printf("postData: %v", data)
 
