@@ -13,10 +13,9 @@ import (
 
 // NotionData NotionのWebhookから受け取るJSONデータの構造体
 type NotionData struct {
-	Team   string `json:"team"`
 	Url    string `json:"url"`
 	Title  string `json:"title"`
-	Status string `json:"status"`
+	Source string `json:"source"`
 	User   string `json:"user"`
 }
 
@@ -66,7 +65,7 @@ func createDiscordWebhookData(notionData *NotionData) error {
 			{
 				Title:       notionData.Title,
 				Url:         notionData.Url,
-				Description: fmt.Sprintf("進捗: %s\n投稿者: %s", notionData.Status, notionData.User),
+				Description: fmt.Sprintf("発生箇所: %s\n担当者: %s", notionData.Source, notionData.User),
 				Color:       5620992,
 			},
 		},
@@ -75,12 +74,10 @@ func createDiscordWebhookData(notionData *NotionData) error {
 	log.Printf("postData: %v", data)
 
 	// 環境変数からDiscordのWebhook URLを取得
-	webhookUrl := os.Getenv(notionData.Team)
+	webhookUrl := os.Getenv("C")
 	if webhookUrl == "" {
-		return fmt.Errorf("invalid team: %s", notionData.Team)
+		return fmt.Errorf("invalid team")
 	}
-
-	fmt.Printf("webhookUrl: %v", webhookUrl)
 
 	// PostするデータをJSONに変換
 	jsonData, err := json.Marshal(data)
@@ -128,16 +125,12 @@ func checkJsonData(postData *NotionData, allData *NotionJsonData) string {
 		errMsg += "missing title\n"
 	}
 
-	if postData.Status = data.Properties.Progress.Status.Name; postData.Status == "" {
+	if postData.Source = data.Properties.Progress.Status.Name; postData.Source == "" {
 		errMsg += "missing status\n"
 	}
 
 	if postData.User = data.Properties.Reporter.CreatedBy.Name; postData.User == "" {
 		errMsg += "missing user\n"
-	}
-
-	if postData.Team = data.Properties.Team.RichText[0].PlainText; postData.Team == "" {
-		errMsg += "missing team\n"
 	}
 
 	return errMsg
